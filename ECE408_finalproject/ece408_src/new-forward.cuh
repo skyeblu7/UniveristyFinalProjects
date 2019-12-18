@@ -12,11 +12,11 @@ namespace mxnet
 {
   namespace op 
   {
-    __global__ void forward_kernel(float *K, float *X, float *Y, int M, int C, int H, int W, int K_width, int H_out, int W_out) 
+    __global__ void forward_kernel12(float *K, float *X, float *Y, int M, int C, int H, int W, int K_width, int H_out, int W_out) 
     {
 
-      __shared__ float tileA[blockDim.x][blockDim.x];
-      __shared__ float tileB[blockDim.x][blockDim.x];
+      __shared__ float tileA[TILE_WIDTH_12][TILE_WIDTH_12];
+      __shared__ float tileB[TILE_WIDTH_12][TILE_WIDTH_12];
 
       int numCColumns = H_out * W_out;
       int numAColumns = C * K_width * K_width;
@@ -31,11 +31,11 @@ namespace mxnet
       float res = 0;
       int w, h, p, q, c;
 
-      for (int tile_x = 0; tile_x < ceil((float)numAColumns / blockDim.x);
+      for (int tile_x = 0; tile_x < ceil((float)numAColumns / TILE_WIDTH_12);
           tile_x++) {
 
-        int matrix_col = tile_x * blockDim.x + tx;
-        int matrix_row = tile_x * blockDim.x + ty;
+        int matrix_col = tile_x * TILE_WIDTH_12 + tx;
+        int matrix_row = tile_x * TILE_WIDTH_12 + ty;
 
         if ((matrix_col < numAColumns) && (row_x < M)) {
           tileA[ty][tx] = K[row_x * numAColumns + matrix_col];
@@ -58,7 +58,7 @@ namespace mxnet
         }
 
         __syncthreads();
-        for (int k = 0; k < blockDim.x; k++) {
+        for (int k = 0; k < TILE_WIDTH_12; k++) {
           res += tileA[ty][k] * tileB[k][tx];
         }
         __syncthreads();
@@ -69,7 +69,62 @@ namespace mxnet
       }
     }
 
-    
+    __global__ void forward_kernel24(float *K, float *X, float *Y, int M, int C, int H, int W, int K_width, int H_out, int W_out) 
+    {
+
+      __shared__ float tileA[TILE_WIDTH_24][TILE_WIDTH_24];
+      __shared__ float tileB[TILE_WIDTH_24][TILE_WIDTH_24];
+
+      int numCColumns = H_out * W_out;
+      int numAColumns = C * K_width * K_width;
+      Y += blockIdx.z * M * numCColumns;
+      X += blockIdx.z * H * W * C;
+
+      int tx = threadIdx.x;
+      int ty = threadIdx.y;
+      int row_x = blockIdx.y * blockDim.y + threadIdx.y;
+      int col_x = blockIdx.x * blockDim.x + threadIdx.x;
+
+      float res = 0;
+      int w, h, p, q, c;
+
+      for (int tile_x = 0; tile_x < ceil((float)numAColumns / TILE_WIDTH_24);
+          tile_x++) {
+
+        int matrix_col = tile_x * TILE_WIDTH_24 + tx;
+        int matrix_row = tile_x * TILE_WIDTH_24 + ty;
+
+        if ((matrix_col < numAColumns) && (row_x < M)) {
+          tileA[ty][tx] = K[row_x * numAColumns + matrix_col];
+        } else {
+          tileA[ty][tx] = 0;
+        }
+
+        if ((matrix_row < numAColumns) && (col_x < numCColumns)) {
+
+          q = matrix_row % K_width;
+          matrix_row /= K_width;
+          p = matrix_row % K_width;
+          c = matrix_row / K_width;
+          w = col_x % W_out;
+          h = col_x / W_out;
+
+          tileB[ty][tx] = X[c * H * W + (h + p) * W + (w + q)];
+        } else {
+          tileB[ty][tx] = 0;
+        }
+
+        __syncthreads();
+        for (int k = 0; k < TILE_WIDTH_24; k++) {
+          res += tileA[ty][k] * tileB[k][tx];
+        }
+        __syncthreads();
+      }
+
+      if ((row_x < M) && (col_x < numCColumns)) {
+        Y[row_x * numCColumns + col_x] = res;
+      }
+    }
 
     /*
     This function is called by new-inl.h
@@ -106,6 +161,7 @@ namespace mxnet
         dim3 gridDim(numBlocksX, numBlocksY, B);
         dim3 blockDim(TILE_WIDTH_12, TILE_WIDTH_12, 1);
 
+        forward_kernel12<<<gridDim, blockDim>>>(Kernel, X, Y, M, C, H, W, K, H_out, W_out);
       } 
       else if (M == 24) {
         int numBlocksX = ceil((float)H_out * W_out / TILE_WIDTH_24);
@@ -113,9 +169,8 @@ namespace mxnet
         dim3 gridDim(numBlocksX, numBlocksY, B);
         dim3 blockDim(TILE_WIDTH_24, TILE_WIDTH_24, 1);
 
+        forward_kernel24<<<gridDim, blockDim>>>(Kernel, X, Y, M, C, H, W, K, H_out, W_out);
       }
-
-      forward_kernel<<<gridDim, blockDim>>>(Kernel, X, Y, M, C, H, W, K, H_out, W_out);
 
       // Use MSHADOW_CUDA_CALL to check for CUDA runtime errors.
       MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
