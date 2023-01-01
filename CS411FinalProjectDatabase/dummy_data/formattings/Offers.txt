@@ -1,0 +1,13 @@
+INSERT INTO Offers (
+    card_id,  --INT FOREIGN KEY REFERENCES Credit_Cards(card_id) ON DELETE CASCADE
+    vend_id   --INT FOREIGN KEY REFERENCES Preferred_Vendors(vend_id) ON DELETE CASCADE
+)
+VALUES
+    (
+        int,
+        int
+    ),
+    (
+        int,
+        int
+    );

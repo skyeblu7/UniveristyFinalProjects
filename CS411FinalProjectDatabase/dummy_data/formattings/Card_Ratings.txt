@@ -1,0 +1,19 @@
+INSERT INTO Card_Ratings (
+    rating_id,    --INT PRIMARY KEY
+    card_id,      --INT FOREIGN KEY REFERENCES Credit_Cards(card_id) ON DELETE CASCADE
+    website_name, --VARCHAR(255)
+    rating        --REAL
+)
+VALUES
+    (
+        int,
+        int,
+        vchar,
+        real
+    ),
+    (
+        int,
+        int,
+        vchar,
+        real
+    );

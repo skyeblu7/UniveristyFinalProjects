@@ -1,0 +1,49 @@
+INSERT INTO Credit_Cards (
+    card_id,            --INT PRIMARY KEY
+    card_name,          --VARCHAR(255) NOT NULL
+    processor_id,       --INT FOREIGN KEY REFERENCES Payment_Processors(processor_id) ON DELETE SET NULL
+    bank,               --VARCHAR(255)
+    annual_fee,         --REAL
+    credit_limit,       --REAL
+    signup_bonus,       --REAL
+    APR_min,            --REAL
+    APR_max,            --REAL
+    min_rec_credit,     --INT
+    image_url,          --VARCHAR(255)
+    signup_link,        --VARCHAR(255)
+    foreign_trans_fee,  --REAL
+    reward_type         --CHAR(1)
+)
+VALUES
+    (
+        int,
+        vchar,
+        int,
+        vchar,
+        real,
+        real,
+        real,
+        real,
+        real,
+        int,
+        vchar,
+        vchar,
+        real,
+        binary
+    ),
+    (
+        int,
+        vchar,
+        int,
+        vchar,
+        real,
+        real,
+        real,
+        real,
+        real,
+        int,
+        vchar,
+        vchar,
+        real,
+        binary
+    );

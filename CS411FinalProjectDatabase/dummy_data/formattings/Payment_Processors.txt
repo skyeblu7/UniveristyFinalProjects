@@ -1,0 +1,31 @@
+INSERT INTO Payment_Processors (
+    processor_id,         --INT PRIMARY KEY
+    processor_name,       --VARCHAR(255) NOT NULL
+    domestic_accept,      --INT
+    international_accept, --INT
+    total_cards_us,       --INT
+    total_vol_us,         --INT
+    num_trans,            --INT
+    avg_proc_fee          --REAL
+)
+VALUES
+    (
+        int,
+        vchar,
+        int,
+        int,
+        int,
+        int,
+        int,
+        real
+    ),
+    (
+        int,
+        vchar,
+        int,
+        int,
+        int,
+        int,
+        int,
+        real
+    );
